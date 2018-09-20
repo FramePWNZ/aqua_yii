@@ -1,0 +1,7 @@
+RewriteEngine on
+# ≈сли директори€ или файл созданы, то не использовать правила
+# а обращатьс€ к файлу напр€мую
+# дл€ картинок например
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php
