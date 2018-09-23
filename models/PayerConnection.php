@@ -43,4 +43,10 @@ class PayerConnection extends \yii\db\ActiveRecord
             'payer_id' => 'Payer ID',
         ];
     }
+
+
+    public static function findByPayerId($id, $childId)
+    {
+        return static::find()->where(['AND', ['payer_id' => $id], ['user_id' => $childId]])->one();
+    }
 }

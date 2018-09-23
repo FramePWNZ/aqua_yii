@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use app\models\Children;
 
 /**
  * This is the model class for table "payer".
@@ -60,4 +61,16 @@ class Payer extends \yii\db\ActiveRecord
             'job' => 'Job',
         ];
     }
+
+    public static function findByPhone($phone)
+    {
+        return static::find()->where(['AND', ['phone' => $phone], ['delete_payer' => 0]])->one();
+    }
+
+
+    public function getChilds()
+    {
+        return $this->hasMany(Children::className(), ['id' => 'user_id'])->viaTable('payer_connection', ['payer_id' => 'id'])->where(['delete_user' => 0]);
+    }
+
 }
