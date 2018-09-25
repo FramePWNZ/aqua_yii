@@ -36,7 +36,6 @@ class Payer extends \yii\db\ActiveRecord
     {
         return [
             [['b_date', 'job'], 'required'],
-            [['b_date'], 'safe'],
             [['comment', 'job'], 'string'],
             [['delete_payer', 'date_create'], 'integer'],
             [['name', 'phone', 'mail', 'client'], 'string', 'max' => 255],

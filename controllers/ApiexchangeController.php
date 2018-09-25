@@ -494,7 +494,7 @@ class ApiexchangeController extends \yii\web\Controller
         }
 
         $child->name = $name;
-        $child->b_date = $bdate ? $bdate : '0000-00-00';
+        $child->b_date = $bdate ? date('Y-m-d', strtotime($bdate)) : '0000-00-00';
         $child->phone = $payer->phone;
 
         if(!$child->save()) {

@@ -55,7 +55,7 @@ class Children extends \yii\db\ActiveRecord
         return [
             [['status', 'rights_id', 'delete_user', 'client_status_id', 'user_private_status', 'first_date', 'last_date', 'studio_id', 'alert_id', 'exercise_count', 'operator_number', 'operator', 'phone_confirm'], 'integer'],
             [['name', 'b_date', 'phone'], 'required'],
-            [['b_date', 'status_change_date', 'created'], 'safe'],
+            [['status_change_date', 'created'], 'safe'],
             [['note'], 'string'],
             [['discont', 'client_balance', 'rate', 'rate_shift'], 'number'],
             [['login', 'password', 'phone', 'mail'], 'string', 'max' => 366],
