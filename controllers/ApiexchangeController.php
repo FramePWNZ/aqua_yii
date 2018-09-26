@@ -6,6 +6,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 use app\models\AddressCab;
 use app\models\Cabinet;
 use app\models\Children;
+use app\models\MastersGraphs;
 use app\models\Payer;
 use app\models\PayerConnection;
 use app\models\Record;
@@ -327,7 +328,7 @@ class ApiexchangeController extends \yii\web\Controller
 
                 $payer = new Payer();
                 $payer->phone = $user->phone;
-                $payer->b_date = '0000-00-00';
+                $payer->b_date = null;
                 $payer->job = '-';
                 $payer->save();
 				
@@ -407,7 +408,7 @@ class ApiexchangeController extends \yii\web\Controller
 
         $payer->name = $name;
         $payer->phone = $user->phone;
-        $payer->b_date = $bdate ? $bdate : '0000-00-00';
+        $payer->b_date = $bdate ? $bdate : null;
         $payer->job = '-';
 
         if(!$payer->save()) {
@@ -431,7 +432,7 @@ class ApiexchangeController extends \yii\web\Controller
         if(!($payer)) {
             $payer = new Payer();
             $payer->phone = $user->phone;
-            $payer->b_date = '0000-00-00';
+            $payer->b_date = null;
             $payer->job = '-';
             $payer->save();
         }
@@ -468,7 +469,7 @@ class ApiexchangeController extends \yii\web\Controller
         if(!($payer)) {
             $payer = new Payer();
             $payer->phone = $user->phone;
-            $payer->b_date = '0000-00-00';
+            $payer->b_date = null;
             $payer->job = '-';
             $payer->save();
         }
@@ -496,6 +497,7 @@ class ApiexchangeController extends \yii\web\Controller
         $child->name = $name;
         $child->b_date = $bdate ? date('Y-m-d', strtotime($bdate)) : '0000-00-00';
         $child->phone = $payer->phone;
+        $child->mail = '-';
 
         if(!$child->save()) {
             $this->responceErrorJson(2, "Данные переданы неверно");
@@ -670,7 +672,25 @@ class ApiexchangeController extends \yii\web\Controller
             }
         }
 
-        print_r($cabinetsArr);
+        $graphs = MastersGraphs::find()->where(['AND', ['in', 'cab_id', $cabinetsArr], ['>', 'date', date('Y-m-d')], ['<', 'date', date('Y-m-d', time() + 86400 * 30)]])->all();
+
+        $masterIds = array();
+        foreach ($graphs as $graph) {
+            array_push($masterIds, $graph->master_id);
+        }
+
+        $masterIds = array_unique($masterIds);
+        $masterArr = array();
+        foreach ($masterIds as $masterId) {
+            $master = Children::findOne(['id'=>$masterId]);
+            $masterObj = new \stdClass();
+            $masterObj->id = $master->id;
+            $masterObj->name = $master->name;
+
+            array_push($masterArr, $masterObj);
+        }
+
+        $this->responceSuccessJson('masters', $masterArr);
     }
 
 
