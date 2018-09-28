@@ -694,6 +694,130 @@ class ApiexchangeController extends \yii\web\Controller
     }
 
 
+    public function actionGettimes() {
+        $token = $_POST['token'];
+        $address = $_POST['address'];
+        $master = $_POST['master'];
+        if(!($user = $this->getUserByToken($token))) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $cabinetsArr = array();
+        if($address != -1) {
+            $addressObj = AddressCab::findOne(['id' => $address]);
+            if (count($addressObj->cabinets)) {
+                foreach ($addressObj->cabinets as $cabinet) {
+                    array_push($cabinetsArr, $cabinet->id);
+                }
+            }
+        } else {
+            $cabinets = Cabinet::find()->all();
+            foreach($cabinets as $cabinet) {
+                array_push($cabinetsArr, $cabinet->id);
+            }
+        }
+
+        if($master != -1) {
+            $graphs = MastersGraphs::find()->where(['AND', ['master_id'=>$master], ['in', 'cab_id', $cabinetsArr], ['>', 'date', date('Y-m-d')], ['<', 'date', date('Y-m-d', time() + 86400 * 30)], ['type'=>1]])->all();
+        } else {
+            $graphs = MastersGraphs::find()->where(['AND', ['in', 'cab_id', $cabinetsArr], ['>', 'date', date('Y-m-d')], ['<', 'date', date('Y-m-d', time() + 86400 * 30)], ['type'=>1]])->all();
+        }
+
+        $workDates = array();
+
+        foreach($graphs as $graph) {
+            $workDay = new \stdClass();
+            $workDay->master_id = $graph->master_id;
+            $workDay->time_work = $this->getWorkTimeArr($graph->time_work);
+
+            $workDates[$graph->date][$graph->cab_id][] = $workDay;
+        }
+
+        ksort($workDates);
+
+        $records = Record::find()->where(['AND', ['in', 'cabinet_id', $cabinetsArr], ['>', 'date_record', date('Y-m-d')]])->all();
+        $recordsDates = array();
+        foreach ($records as $record) {
+            $recordsDay = new \stdClass();
+            $recordsDay->start = $record->time_record;
+            $recordsDay->finish = $record->time_record + $record->duration_for_count;
+
+            $recordsDates[$record->date_record][$record->cabinet_id][] = $recordsDay;
+        }
+
+        $cabsArr = array();
+        $cabs = Cabinet::find()->where(['in', 'id', $cabinetsArr])->all();
+        foreach ($cabs as $cab) {
+            $cabObj = new \stdClass();
+            $cabObj->name = $cab->name;
+            $cabObj->shirt_name = $cab->shirt_name;
+
+            $cabsArr[$cab->id] = $cabObj;
+        }
+
+        $times = array();
+
+        foreach($workDates as $date => $workDay) {
+            foreach ($workDay as $cabinet_id => $workDayCab) {
+                foreach($workDayCab as $workDayMaster) {
+                    $master_id = $workDayMaster->master_id;
+                    foreach($workDayMaster->time_work as $workTime) {
+                        //Формирование строки для вывода на страницу
+                        $output_text = $this->output_time($workTime);
+                        $output_text .= '–';
+                        $output_text .= $this->output_time($workTime+0.5);
+
+                        $check = false;
+
+                        if(count($recordsDates[$date][$cabinet_id])) {
+                            foreach ($recordsDates[$date][$cabinet_id] as $record) {
+                                if (!(
+                                    $workTime < $record->start && $workTime + 0.5 <= $record->start ||
+                                    $workTime >= $record->finish
+                                )
+                                ) {
+                                    $check = true;
+                                }
+                            }
+                        }
+
+                        if(!$check) {
+                            $times[$date][] = array('cab_id'=>$cabinet_id, 'master_id'=>$master_id, 'start'=>$workTime, 'finish'=>$workTime+0.5, 'output_text'=>$output_text, 'cab_name' => $cabsArr[$cabinet_id]->name, 'mobileCabName' => $cabsArr[$cabinet_id]->shirt_name);
+                        }
+                    }
+                }
+            }
+        }
+
+        $finalArr = array();
+
+        if(count($times)) {
+            foreach($times as $date => $workDay) {
+                $timesRecord = array();
+                foreach($workDay as $accessTime) {
+                    if(!in_array($accessTime['start'], $timesRecord)) {
+                        $finalArr[$date][] = $accessTime;
+                        $timesRecord[] = $accessTime['start'];
+                    }
+                }
+                usort($finalArr[$date], function($a, $b) {
+                    if($a['start'] > $b['start']) {
+                        return true;
+                    } else return false;
+                });
+            }
+        }
+
+        $this->responceSuccessJson('times', $finalArr);
+    }
+
+    
+
+    private function getWorkTimeArr($str) {
+        $str = trim($str, "¿");
+        return explode('¿', $str);
+    }
+
     //Вывод русского месяца
     private function rdate($param, $time=0) {
         if(intval($time)==0)$time=time();
@@ -728,4 +852,13 @@ class ApiexchangeController extends \yii\web\Controller
 		
 		return $body;
 	}
+
+    //Функция для сортировки двумерного массива пустых времен
+    function sort_time($a, $b) {
+        if($a->start > $b->start) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
 }
