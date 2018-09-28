@@ -811,7 +811,20 @@ class ApiexchangeController extends \yii\web\Controller
         $this->responceSuccessJson('times', $finalArr);
     }
 
-    
+    public function actionCreaterecords()
+    {
+        $token = $_POST['token'];
+        if(!($user = $this->getUserByToken($token))) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $cab_id = $_POST['cab_id'];
+        $master = $_POST['master'];
+        $date = $_POST['date'];
+        $start = $_POST['time'];
+
+        $graphs = MastersGraphs::find()->where(['AND', ['date'=>$date], ['master_id'=>$master], ['cab_id'=>$cab_id], ['>', 'date', date('Y-m-d')], ['<', 'date', date('Y-m-d', time() + 86400 * 30)], ['type'=>1]])->all();
+    }
 
     private function getWorkTimeArr($str) {
         $str = trim($str, "¿");
