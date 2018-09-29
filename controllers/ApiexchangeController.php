@@ -603,6 +603,9 @@ class ApiexchangeController extends \yii\web\Controller
 
                 $localRecord->id = $recordObj->id;
                 $localRecord->datetime = $this->rdate('d M', strtotime($recordObj->date_record)).', '.$this->output_time($recordObj->time_record);
+
+                $localRecord->time = $recordObj->time_record;
+
                 $localRecord->performed = $recordObj->performed ? $recordObj->performed : 0;
                 $localRecord->date = $recordObj->date_record;
 
@@ -690,6 +693,12 @@ class ApiexchangeController extends \yii\web\Controller
             $masterObj = new \stdClass();
             $masterObj->id = $master->id;
             $masterObj->name = $master->name;
+
+            if(isset($master->img)) {
+                $masterObj->img = $master->img;
+            } else {
+                $masterObj->img = 'https://yt3.ggpht.com/a-/AN66SAy8cvtgmsdE9EnCfkZpGQKedZS-ePChhyed8Q=s48-mo-c-c0xffffffff-rj-k-no';
+            }
 
             array_push($masterArr, $masterObj);
         }
