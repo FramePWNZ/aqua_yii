@@ -3,13 +3,17 @@
 namespace app\controllers;
 error_reporting(E_ALL & ~E_NOTICE);
 
+use app\models\AbonementsClients;
 use app\models\AddressCab;
 use app\models\Cabinet;
 use app\models\Children;
+use app\models\LogCustomerRecord;
+use app\models\LogServicesPackage;
 use app\models\MastersGraphs;
 use app\models\Payer;
 use app\models\PayerConnection;
 use app\models\Record;
+use app\models\ServicesPackage;
 use Yii;
 use app\models\Sessions;
 use app\models\LoginForm;
@@ -822,8 +826,81 @@ class ApiexchangeController extends \yii\web\Controller
         $master = $_POST['master'];
         $date = $_POST['date'];
         $start = $_POST['time'];
+        $children = $_POST['children'];
 
-        $graphs = MastersGraphs::find()->where(['AND', ['date'=>$date], ['master_id'=>$master], ['cab_id'=>$cab_id], ['>', 'date', date('Y-m-d')], ['<', 'date', date('Y-m-d', time() + 86400 * 30)], ['type'=>1]])->all();
+        $payer = Payer::findByPhone($user->phone);
+        if(!($payer)) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $check = false;
+
+        if(count($payer->childs)) {
+            foreach ($payer->childs as $childBaseObj) {
+                if($childBaseObj->id == $children) {
+                    $check = true;
+                }
+            }
+        }
+
+        if(!$check) {
+            $this->responceErrorJson(2, "Передан неверный параметр ребенка");
+        }
+
+        $graph = MastersGraphs::find()->where(['AND', ['date'=>$date], ['master_id'=>$master], ['cab_id'=>$cab_id], ['date'=>date('Y-m-d', strtotime($date))], ['type'=>1]])->one();
+        if(!$graph) {
+            $this->responceErrorJson(3, "Мастер не работает в этот день");
+        }
+
+        $masterWorkArr = $this->getWorkTimeArr($graph->time_work);
+
+        if(!in_array($start, $masterWorkArr)) {
+            $this->responceErrorJson(3, "Мастер не работает в этот день");
+        }
+
+        $records = Record::find()->where(['AND', ['cabinet_id' => $cab_id], ['time_record'=>$start], ['date_record'=>date('Y-m-d', strtotime($date))]])->all();
+        if(count($records)) {
+            $this->responceErrorJson(4, "Запись на это время уже невозможна");
+        }
+
+        $abonement1 = AbonementsClients::find()->where(['AND', ['<=', 'date_to', $date], ['>=', 'date_from', $date], ['user_id'=>$children]])->orderBy('date_from')->one();
+        $abonement2 = AbonementsClients::find()->where(['AND', ['user_id'=>$children]])->one();
+
+        if(!$abonement1 && $abonement2) {
+            $this->responceErrorJson(5, "У вас закончился абонемент. Запись не удалась.");
+        }
+
+        if(!$abonement1){
+            $this->responceErrorJson(6, "У вас отсутствует абонемент. Запись не удалась.");
+        }
+
+        $paymentType = 0;
+
+        $newRecord = new Record();
+        $newRecord->cabinet_id = $cab_id;
+        $newRecord->master_id = $master;
+        $newRecord->client_id = $children;
+        $newRecord->cert_number = 0;
+        $newRecord->duration = '30м';
+        $newRecord->duration_for_count = 0.5;
+        $newRecord->date_record = $date;
+        $newRecord->time_record = $start;
+        $newRecord->pedicur_from = 0;
+        $newRecord->pedicur_to = 0;
+        $newRecord->abonement_id = $abonement1->id;
+
+        if(!$newRecord->save()) {
+            print_r($newRecord->getErrors());
+            $this->responceErrorJson(7, "Не удалось сохранить запись.");
+        } else {
+            $servicePackage = new ServicesPackage();
+            $servicePackage->customer_record_id = $newRecord->id;
+            $servicePackage->service_id = 48;
+            $servicePackage->count = 1;
+            $servicePackage->save();
+        }
+
+        $this->responceSuccessJson();
     }
 
     private function getWorkTimeArr($str) {
