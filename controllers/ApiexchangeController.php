@@ -666,6 +666,10 @@ class ApiexchangeController extends \yii\web\Controller
             $this->responceErrorJson(1, "Вы не авторизованы");
         }
 
+        if(!$address) {
+            $address = -1;
+        }
+
         $cabinetsArr = array();
         if($address != -1) {
             $addressObj = AddressCab::findOne(['id' => $address]);
@@ -698,6 +702,10 @@ class ApiexchangeController extends \yii\web\Controller
                 $masterObj->img = $master->img;
             } else {
                 $masterObj->img = 'https://yt3.ggpht.com/a-/AN66SAy8cvtgmsdE9EnCfkZpGQKedZS-ePChhyed8Q=s48-mo-c-c0xffffffff-rj-k-no';
+            }
+
+            if(isset($master->description)) {
+                $masterObj->description = $master->description;
             }
 
             array_push($masterArr, $masterObj);
@@ -911,6 +919,84 @@ class ApiexchangeController extends \yii\web\Controller
 
         $this->responceSuccessJson();
     }
+
+    public function actionRemoverecord() {
+        $token = $_POST['token'];
+        $id = $_POST['id'];
+
+        if(!($user = $this->getUserByToken($token))) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $payer = Payer::findByPhone($user->phone);
+        if(!($payer)) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $childIds = array();
+        if(count($payer->childs)) {
+            foreach ($payer->childs as $childBaseObj) {
+                array_push($childIds, $childBaseObj->id);
+            }
+        }
+
+        if(!count($childIds)) {
+            $this->responceErrorJson(2, "Запись не найдена");
+        }
+
+        $record = Record::find()->where(['AND', ['client_id'=>$childIds], ['id'=>$id]])->orderBy("date_record DESC")->one();
+
+        if(!$record) {
+            $this->responceErrorJson(2, "Запись не найдена");
+        }
+
+        $record->delete();
+
+        $this->responceSuccessJson();
+    }
+
+
+    public function actionConfirmrecord() {
+        $token = $_POST['token'];
+        $id = $_POST['id'];
+
+        if(!($user = $this->getUserByToken($token))) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $payer = Payer::findByPhone($user->phone);
+        if(!($payer)) {
+            $this->responceErrorJson(1, "Вы не авторизованы");
+        }
+
+        $childIds = array();
+        if(count($payer->childs)) {
+            foreach ($payer->childs as $childBaseObj) {
+                array_push($childIds, $childBaseObj->id);
+            }
+        }
+
+        if(!count($childIds)) {
+            $this->responceErrorJson(2, "Запись не найдена");
+        }
+
+        $record = Record::find()->where(['AND', ['client_id'=>$childIds], ['id'=>$id]])->orderBy("date_record DESC")->one();
+
+        if(!$record) {
+            $this->responceErrorJson(2, "Запись не найдена");
+        }
+
+        $record->confirmed = 1;
+        $record->save();
+
+        $this->responceSuccessJson();
+    }
+
+
+
+
+
+
 
     private function getWorkTimeArr($str) {
         $str = trim($str, "¿");
