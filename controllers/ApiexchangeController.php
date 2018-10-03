@@ -75,6 +75,11 @@ class ApiexchangeController extends \yii\web\Controller
         $return_data->success = 0;
         $return_data->errCode = $code;
         $return_data->errDescr = $text;
+
+        if($_GET['test'] == 1) {
+            $return_data;
+            die();
+        }
         print json_encode($return_data);
         die();
     }
@@ -880,7 +885,7 @@ class ApiexchangeController extends \yii\web\Controller
             $this->responceErrorJson(4, "Запись на это время уже невозможна");
         }
 
-        $abonement1 = AbonementsClients::find()->where(['AND', ['<=', 'date_to', $date], ['>=', 'date_from', $date], ['user_id'=>$children]])->orderBy('date_from')->one();
+        $abonement1 = AbonementsClients::find()->where(['AND', ['<=', 'date_from', $date], ['>=', 'date_to', $date], ['user_id'=>$children]])->orderBy('date_from')->one();
         $abonement2 = AbonementsClients::find()->where(['AND', ['user_id'=>$children]])->one();
 
         if(!$abonement1 && $abonement2) {
